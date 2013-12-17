@@ -186,4 +186,14 @@ tables = {
             "default" : "NULL",
         },
     },
+    "users" : {
+        "name" : {
+            "type" : "text",
+            "nullable" : False,
+        },
+        "date" : {
+            "type" : "text",
+            "nullable" : False,
+        },
+    },
 }
