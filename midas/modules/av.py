@@ -17,6 +17,18 @@ from lib.helpers.system import get_kextstat, get_kextfind, list_users
 from lib.helpers.utilities import to_ascii, encode, error_running_file
 from lib.tables.example import tables
 from lib.decorators import run_every_60
+import netsyslog
+import syslog
+
+SYSLOG_HOST = "10.49.5.170"
+logger = netsyslog.Logger()
+logger.add_host(SYSLOG_HOST)
+
+def sendSyslog(msg):
+	logger.log(syslog.LOG_USER, syslog.LOG_NOTICE, msg, pid=True)
+
+	
+
 
 class AnalyzePlist():
     """AnalyzePlist analyzes property list files installed on the system"""
@@ -243,12 +255,35 @@ if __name__ == "__main__":
 		print data_science.get_all()
 
 	u = AnalyzeUsers()
+	#sendSyslog('ty_name="users" date="Fri, 31 Jan 2014 19:42:28" name="_sandbox"')
 	if u:
 		u.analyze()
 		users = u.data
 		data_science = DataScience(ORM, users, "users")
-		print data_science.get_all()		
-
+		events = data_science.get_new_entries()
+		if events:
+			print len(events)
+			for e in events:
+            			master = "ty_name=\"%s\" " % "users"
+            			for key, value in e.iteritems():
+                			if value != "KEY DNE":
+                    				master += "%s=\"%s\" " % (key, value)
+				print master
+				sendSyslog(master)
+		#Do the same for:
+                events = data_science.get_changed_entries()
+                if events:
+			print len(events)
+                	for e in events:
+                        	print e
+                        	sendSyslog(e)
+                events = data_science.get_removed_entries()
+                if events:
+			print len(events)
+                	for e in events:
+                       		print e
+                       		sendSyslog(e)
+	
     	try:
         	a = AnalyzePlist()
         	if a is not None:
