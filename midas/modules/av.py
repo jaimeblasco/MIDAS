@@ -17,17 +17,15 @@ from lib.helpers.system import get_kextstat, get_kextfind, list_users
 from lib.helpers.utilities import to_ascii, encode, error_running_file
 from lib.tables.example import tables
 from lib.decorators import run_every_60
-import netsyslog
+from lib.config import logger, alienvault_instance
 import syslog
 
-SYSLOG_HOST = "10.49.5.170"
-logger = netsyslog.Logger()
-logger.add_host(SYSLOG_HOST)
+
+logger.add_host(alienvault_instance)
+
 
 def sendSyslog(msg):
-	logger.log(syslog.LOG_USER, syslog.LOG_NOTICE, msg, pid=True)
-
-	
+    logger.log(syslog.LOG_USER, syslog.LOG_NOTICE, msg, pid=True)
 
 
 class AnalyzePlist():
@@ -43,8 +41,8 @@ class AnalyzePlist():
         self.check_keys_hash = Config.get("plist_check_keys_hash")
         self.hashes = self.gather_hashes()
         self.files = list_launch_agents() + list_launch_daemons() + \
-            list_app_info_plist() + list_plugin_info_plist() + \
-            list_current_host_pref_files()
+                     list_app_info_plist() + list_plugin_info_plist() + \
+                     list_current_host_pref_files()
         self.changed_files, self.new_files, \
         self.same_files = self.bucket_files(
             self.files,
@@ -219,97 +217,109 @@ class AnalyzeKexts():
 
 
 class AnalyzeUsers():
-	"""Analyze system users"""
-	
-    	def __init__(self):
-        	self.data = []
+    """Analyze system users"""
 
-	def check_users(self):
-		"""
-		Log all users
-		"""
+    def __init__(self):
+        self.data = []
 
-		users = list_users()
-		for u in users:
-			self.data.append({"name": u, "date": exec_date,})
+    def check_users(self):
+        """
+        Log all users
+        """
 
-	def analyze(self):
-		self.check_users()
-	
+        users = list_users()
+        for u in users:
+            self.data.append({"name": u, "date": exec_date, })
+
+    def analyze(self):
+        self.check_users()
+
 
 if __name__ == "__main__":
 
-	start = time()
-	exec_date = strftime("%a, %d %b %Y %H:%M:%S", gmtime())
-	ORM = TyORM(Config.get("database"))
-	if isfile(Config.get("database")):
-		chmod(Config.get("database"), 0600)
-	for k, v in tables.iteritems():
-		ORM.initialize_table(k, v)
-		
-	a = AnalyzeKexts()
-	if a is not None:
-		a.analyze()
-		kext_data = a.data
-		data_science = DataScience(ORM, kext_data, "kexts")
-		print data_science.get_all()
+    start = time()
+    exec_date = strftime("%a, %d %b %Y %H:%M:%S", gmtime())
+    ORM = TyORM(Config.get("database"))
+    if isfile(Config.get("database")):
+        chmod(Config.get("database"), 0600)
+    for k, v in tables.iteritems():
+        ORM.initialize_table(k, v)
 
-	u = AnalyzeUsers()
-	#sendSyslog('ty_name="users" date="Fri, 31 Jan 2014 19:42:28" name="_sandbox"')
-	if u:
-		u.analyze()
-		users = u.data
-		data_science = DataScience(ORM, users, "users")
-		events = data_science.get_new_entries()
-		if events:
-			print len(events)
-			for e in events:
-            			master = "ty_name=\"%s\" " % "users"
-            			for key, value in e.iteritems():
-                			if value != "KEY DNE":
-                    				master += "%s=\"%s\" " % (key, value)
-				print master
-				sendSyslog(master)
-		#Do the same for:
-                events = data_science.get_changed_entries()
-                if events:
-			print len(events)
-                	for e in events:
-                        	print e
-                        	sendSyslog(e)
-                events = data_science.get_removed_entries()
-                if events:
-			print len(events)
-                	for e in events:
-                       		print e
-                       		sendSyslog(e)
-	
-    	try:
-        	a = AnalyzePlist()
-        	if a is not None:
-            		plist_pre_changed_files = a.pre_changed_files
-            		plist_post_changed_files = a.post_changed_files
-            		plist_pre_new_files = a.pre_new_files
-            		plist_post_new_files = a.post_new_files
+    a = AnalyzeKexts()
+    if a is not None:
+        a.analyze()
+        kext_data = a.data
+        data_science = DataScience(ORM, kext_data, "kexts")
+        print data_science.get_all()
 
-            		data_science = DataScience(
-                		ORM,
-                		plist_post_changed_files,
-                		"plist",
-                		"name",
-                		plist_pre_changed_files,
-            		)
-            		data_science.get_changed_entries()
+    u = AnalyzeUsers()
+    #sendSyslog('ty_name="users" date="Fri, 31 Jan 2014 19:42:28" name="_sandbox"')
+    if u:
+        u.analyze()
+        users = u.data
+        data_science = DataScience(ORM, users, "users")
+        events = data_science.get_new_entries()
+        if events:
+            print len(events)
+            for e in events:
+                master = "ty_name=\"%s\" " % "users"
+                for key, value in e.iteritems():
+                    if value != "KEY DNE":
+                        master += "%s=\"%s\" " % (key, value)
+                print master
+                sendSyslog(master)
+        #Do the same for:
+        events = data_science.get_changed_entries()
+        if events:
+            print len(events)
+            for e in events:
+                print e
+                sendSyslog(e)
+        events = data_science.get_removed_entries()
+        if events:
+            print len(events)
+            for e in events:
+                print e
+                sendSyslog(e)
 
-            		data_science = DataScience(
-                		ORM,
-                		plist_post_new_files,
-                		"plist",
-                		"name",
-                		plist_pre_new_files,
-            		)
-            		data_science.get_new_entries()
-    	except Exception, error:
-        	print error_running_file(__file__, "lad", error)
+    try:
+        a = AnalyzePlist()
+        if a is not None:
+            plist_pre_changed_files = a.pre_changed_files
+            plist_post_changed_files = a.post_changed_files
+            plist_pre_new_files = a.pre_new_files
+            plist_post_new_files = a.post_new_files
 
+            data_science = DataScience(
+                ORM,
+                plist_post_changed_files,
+                "plist",
+                "name",
+                plist_pre_changed_files,
+            )
+            changed_events = data_science.get_changed_entries()
 
+            data_science = DataScience(
+                ORM,
+                plist_post_new_files,
+                "plist",
+                "name",
+                plist_pre_new_files,
+            )
+            new_events = data_science.get_new_entries()
+            for e in new_events:
+                master = "ty_name=\"%s\" " % "plist"
+                for key, value in e.iteritems():
+                    if value != "KEY DNE":
+                        master += "%s=\"%s\" " % (key, value)
+                print master
+                sendSyslog(master)
+            for e in changed_events:
+                master = "ty_name=\"%s\" " % "plist"
+                for key, value in e.iteritems():
+                    if value != "KEY DNE":
+                        master += "%s=\"%s\" " % (key, value)
+                print master
+                sendSyslog(master)
+    except Exception, error:
+        print error_running_file(__file__, "lad", error)

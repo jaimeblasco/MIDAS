@@ -50,3 +50,9 @@ config['firewall_keys'] = [
 
 # Maintain backwards compatibility
 Config = config
+
+
+# AlienVault config below this line
+import netsyslog
+alienvault_instance = "10.49.5.209"
+logger = netsyslog.Logger()
