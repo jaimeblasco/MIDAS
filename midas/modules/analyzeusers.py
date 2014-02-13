@@ -55,30 +55,23 @@ if __name__ == "__main__":
             u.analyze()
             users = u.data
             data_science = DataScience(ORM, users, "users")
-            events = data_science.get_new_entries()
-
-            pre_changed_accounts = a.pre_changed_files
-            post_changed_accounts = a.post_changed_files
-            pre_new_accounts = a.pre_new_files
-            post_new_accounts = a.post_new_files
-
-            data_science = DataScience(
-                ORM,
-                plist_post_changed_files,
-                "plist",
-                "name",
-                plist_pre_changed_files,
-                )
-            data_science.get_changed_entries()
-
-            data_science = DataScience(
-                ORM,
-                plist_post_new_files,
-                "plist",
-                "name",
-                plist_pre_new_files,
-                )
-            data_science.get_new_entries()
+            new_entries = data_science.get_new_entries()
+            if new_entries:
+                for entry in new_entries:
+                    next_message = "ty_name=\"%s\" " % "users"
+                    for key, value in entry.iteritems():
+                        if value != "KEY DNE":
+                            next_message += "%s=\"%s\" " % (key, value)
+                            print next_message
+            data_science.get_removed_entries()
+            removed_entries = data_science.get_new_entries()
+            if removed_entries:
+                for entry in removed_entries:
+                    next_message = "ty_name=\"%s\" " % "users"
+                    for key, value in entry.iteritems():
+                        if value != "KEY DNE":
+                            next_message += "%s=\"%s\" " % (key, value)
+                            print next_message
     except Exception, error:
         print error_running_file(__file__, "lad", error)
 
