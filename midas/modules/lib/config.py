@@ -49,8 +49,8 @@ config['firewall_keys'] = [
 
 # AlienVault configuration
 import netsyslog
-alienvault_instance = "10.49.5.209"
-logger = netsyslog.Logger()
+config['alienvault_instance'] = "10.49.5.209"
+config['logger'] = netsyslog.Logger()
 
 
 # Maintain backwards compatibility
