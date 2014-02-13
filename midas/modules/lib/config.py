@@ -50,8 +50,8 @@ config['firewall_keys'] = [
 # AlienVault configuration
 import netsyslog
 config['alienvault_instance'] = "10.49.5.209"
-config['logger'] = netsyslog.Logger()
-
+config['netsyslogger'] = netsyslog.Logger()
+config['netsyslogger'].add_host(config['alienvault_instance'])
 
 # Maintain backwards compatibility
 Config = config
