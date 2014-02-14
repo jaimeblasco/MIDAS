@@ -13,7 +13,7 @@ from socket import gethostname
 from time import strftime, gmtime
 import syslog
 
-from lib.config import Config
+from modules.lib.config import Config
 
 # Types
 TyLanguage = namedtuple("TyLanguage", "supported_extensions execution_string")
@@ -58,6 +58,7 @@ SUPPORTED_LANGUAGES = [
     BASH_LANGUAGE,
 ]
 
+
 # Functions
 def log_line(log_name, line):
     """log_line accepts a line a returns a properly formatted log line"""
@@ -67,6 +68,10 @@ def log_line(log_name, line):
         log_name,
         line,
     )
+
+def send_syslog(msg):
+    """send a log message to AlienVault"""
+    Config['netsyslogger'].log(syslog.LOG_USER, syslog.LOG_NOTICE, msg, pid=True)
 
 def spawn_module(module, current_lang, mod_name):
     """spawn_module executes an individual Tripyarn module"""
@@ -85,7 +90,7 @@ def spawn_module(module, current_lang, mod_name):
 
     for stdout_line in stdout:
         file_handler.write(log_line(mod_name, stdout_line))
-        sendSyslog(log_line(mod_name, stdout_line))
+        send_syslog(log_line(mod_name, stdout_line))
 
     for stderr_line in stderr:
         file_handler.write(log_line(mod_name, stderr_line))
@@ -103,15 +108,6 @@ def launch_modules():
 
         if current_lang is not None and isinstance(current_lang, TyLanguage):
             spawn_module(module, current_lang, mod_name)
-
-
-
-
-def sendSyslog(msg):
-    """send a log message to AlienVault"""
-    Config['netsyslogger'].log(syslog.LOG_USER, syslog.LOG_NOTICE, msg, pid=True)
-
-
 
 
 if __name__ == "__main__":
