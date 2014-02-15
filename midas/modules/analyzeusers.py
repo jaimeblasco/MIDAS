@@ -12,22 +12,19 @@ from lib.helpers.utilities import error_running_file
 from lib.tables.example import tables
 
 class AnalyzeUsers():
-    """Analyze system users"""
 
     def __init__(self):
-        self.data = []
+        self.data =[]
+        self.users = list_users()
 
     def check_users(self):
-        """
-        Log all users
-        """
-
-        users = list_users()
-        for u in users:
-            self.data.append({"name": u, "date": exec_date, })
+        """Log all users"""
+        for user in self.users:
+            self.data.append({"name": user, "date": exec_date, })
 
     def analyze(self):
         self.check_users()
+
 
 
 
@@ -55,23 +52,7 @@ if __name__ == "__main__":
             u.analyze()
             users = u.data
             data_science = DataScience(ORM, users, "users")
-            new_entries = data_science.get_new_entries()
-            if new_entries:
-                for entry in new_entries:
-                    next_message = "ty_name=\"%s\" " % "users"
-                    for key, value in entry.iteritems():
-                        if value != "KEY DNE":
-                            next_message += "%s=\"%s\" " % (key, value)
-                            print next_message
-            data_science.get_removed_entries()
-            removed_entries = data_science.get_new_entries()
-            if removed_entries:
-                for entry in removed_entries:
-                    next_message = "ty_name=\"%s\" " % "users"
-                    for key, value in entry.iteritems():
-                        if value != "KEY DNE":
-                            next_message += "%s=\"%s\" " % (key, value)
-                            print next_message
+            all_entries = data_science.get_all()
     except Exception, error:
         print error_running_file(__file__, "lad", error)
 
