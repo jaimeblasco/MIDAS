@@ -49,9 +49,12 @@ config['firewall_keys'] = [
 
 # AlienVault configuration
 import netsyslog
-config['alienvault_instance'] = "10.49.5.209"
+config['alienvault_instance'] = "192.168.1.234"
 config['netsyslogger'] = netsyslog.Logger()
 config['netsyslogger'].add_host(config['alienvault_instance'])
+
+# Set this to False to use ./midas/log/*.log
+config['use_netsyslogger'] = True
 
 # Maintain backwards compatibility
 Config = config

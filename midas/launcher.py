@@ -89,11 +89,16 @@ def spawn_module(module, current_lang, mod_name):
     file_handler = open(log_file, "a")
 
     for stdout_line in stdout:
-        file_handler.write(log_line(mod_name, stdout_line))
-        send_syslog(log_line(mod_name, stdout_line))
+        if Config['use_netsyslogger']:
+            send_syslog(log_line(mod_name, stdout_line))
+        else:
+            file_handler.write(log_line(mod_name, stdout_line))
 
     for stderr_line in stderr:
-        file_handler.write(log_line(mod_name, stderr_line))
+        if Config['use_netsyslogger']:
+            send_syslog(log_line(mod_name, stderr_line))
+        else:
+            file_handler.write(log_line(mod_name, stderr_line))
 
 def launch_modules():
     """launch_modules launches Tripyarn's executable modules"""
