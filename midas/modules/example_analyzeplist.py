@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+This is an example MIDAS module
+"""
 
 from os.path import isfile
 from os import chmod
@@ -12,13 +15,12 @@ from lib.config import Config
 from lib.data_science import DataScience
 from lib.helpers.filesystem import hash_file, list_launch_agents, \
     list_launch_daemons, list_app_info_plist, list_plugin_info_plist, \
-    hash_kext, list_current_host_pref_files
-from lib.helpers.system import get_kextstat, get_kextfind, list_users
+    list_current_host_pref_files
 from lib.helpers.utilities import to_ascii, encode, error_running_file
 from lib.tables.example import tables
-from lib.decorators import run_every_60
 
-class AnalyzePlist():
+
+class AnalyzePlist(object):
     """AnalyzePlist analyzes property list files installed on the system"""
 
     def __init__(self):
@@ -61,7 +63,7 @@ class AnalyzePlist():
     def bucket_files(self, files, hashes):
         """
         takes an array of files and a dictionary in {file: hash} form and
-        returns data structures indicative of which files have changed since
+        returns data structures indicitive of which files have changed since
         the last execution
         """
         # changed files and new_files are dicts so that we can store the hash
@@ -99,35 +101,34 @@ class AnalyzePlist():
         """
         Log the values of the launch agent/daemon keys in self.check_keys_hash
         """
+        key = key.lower()
+        key_hash = "%s_hash" % (key.lower(), )
+
         value = get_plist_key(self.plist_file, key)
         if value:
             try:
-                if type(value) in [str, unicode]:
+                if isinstance(value, basestring):
                     # This should only get triggered by the Program key
-                    self.data[key.lower()] = str(to_ascii(value))
-                    self.data["%s_hash" % key.lower()] = hash_file(
-                        str(to_ascii(value))
-                    )
-                elif type(value) in [list]:
+                    self.data[key] = str(to_ascii(value))
+                    self.data[key_hash] = hash_file(str(to_ascii(value)))
+                elif isinstance(value, (list, tuple)):
                     # This should only get triggered by the
                     # ProgramArguments key
-                    self.data[key.lower()] = encode(" ".join(value))
-                    self.data["%s_hash" % key.lower()] = hash_file(
-                        str(value[0])
-                    )
+                    self.data[key] = encode(" ".join(value))
+                    self.data[key_hash] = hash_file(str(value[0]))
             except IOError:
-                self.data["%s_hash" % key.lower()] = "File DNE"
+                self.data[key_hash] = "File DNE"
         else:
-            self.data[key.lower()] = "KEY DNE"
-            self.data["%s_hash" % key.lower()] = "KEY DNE"
+            self.data[key] = "KEY DNE"
+            self.data[key_hash] = "KEY DNE"
 
     def analyze_changed_files(self):
         """
         analyze plists that have changed since last execution
         """
         where_params = self.changed_files.keys()
-        where_statement = "name=%s" % " OR name=".join(
-            ['?'] * len(where_params))
+        where_statement = "name=%s" % (" OR name=".join(
+            ['?'] * len(where_params)), )
         where_clause = [where_statement, where_params]
         self.pre_changed_files = ORM.select("plist", None, where_clause)
         for fname, fname_hash in self.changed_files.iteritems():
@@ -151,8 +152,8 @@ class AnalyzePlist():
         analyze new plists that are on the host
         """
         where_params = self.new_files.keys()
-        where_statement = "name=%s" % " OR name=".join(
-            ['?'] * len(where_params))
+        where_statement = "name=%s" % (" OR name=".join(
+            ['?'] * len(where_params)), )
         where_clause = [where_statement, where_params]
         self.pre_new_files = ORM.select("plist", None, where_clause)
         self.post_new_files = []
@@ -173,82 +174,24 @@ class AnalyzePlist():
             self.post_new_files.append(self.data)
 
 
-class AnalyzeKexts():
-    """AnalyzeKexts analyzes and aggregates currently installed kernel
-    extensions"""
-
-    def __init__(self):
-        self.data = []
-
-    def check_kernel_extensions(self):
-        """
-        Log all loaded kernel extensions
-        """
-        kernel_extensions = get_kextstat()
-        extension_paths = get_kextfind()
-        for i in kernel_extensions.itervalues():
-            try:
-                file_hash = hash_kext(extension_paths, i['Name'])
-                if not file_hash:
-                    file_hash = "KEY DNE"
-                self.data.append({
-                    "name": i['Name'],
-                    "date": exec_date,
-                    "hash": file_hash
-                })
-            except KeyError:
-                pass
-
-    def analyze(self):
-        """
-        This is the 'main' method that launches all of the other checks
-        """
-        self.check_kernel_extensions()
-
-
-class AnalyzeUsers():
-    """Analyze system users"""
-
-    def __init__(self):
-        self.data = []
-
-    def check_users(self):
-        """
-        Log all users
-        """
-
-        users = list_users()
-        for u in users:
-            self.data.append({"name": u, "date": exec_date, })
-
-    def analyze(self):
-        self.check_users()
-
-
 if __name__ == "__main__":
 
     start = time()
+
+    # the "exec_date" is used as the "date" field in the datastore
     exec_date = strftime("%a, %d %b %Y %H:%M:%S", gmtime())
+
+    # the table definitions are stored in a library file. this is instantiating
+    # the ORM object and initializing the tables
     ORM = TyORM(Config.get("database"))
     if isfile(Config.get("database")):
         chmod(Config.get("database"), 0600)
     for k, v in tables.iteritems():
         ORM.initialize_table(k, v)
 
-    a = AnalyzeKexts()
-    if a is not None:
-        a.analyze()
-        kext_data = a.data
-        data_science = DataScience(ORM, kext_data, "kexts")
-        print data_science.get_all()
-
-    u = AnalyzeUsers()
-    if u:
-        u.analyze()
-        users = u.data
-        data_science = DataScience(ORM, users, "users")
-        print data_science.get_all()
-
+    ###########################################################################
+    # Gather data
+    ###########################################################################
     try:
         a = AnalyzePlist()
         if a is not None:
@@ -277,4 +220,10 @@ if __name__ == "__main__":
     except Exception, error:
         print error_running_file(__file__, "lad", error)
 
+    end = time()
 
+    # to see how long this module took to execute, launch the module with
+    # "--log" as a command line argument
+    if "--log" in argv[1:]:
+        logging.basicConfig(format='%(message)s', level=logging.INFO)
+    logging.info("Execution took %s seconds.", str(end - start))

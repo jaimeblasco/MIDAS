@@ -11,6 +11,9 @@ from collections import namedtuple
 from itertools import chain
 from socket import gethostname
 from time import strftime, gmtime
+import syslog
+
+from modules.lib.config import Config
 
 # Types
 TyLanguage = namedtuple("TyLanguage", "supported_extensions execution_string")
@@ -55,6 +58,7 @@ SUPPORTED_LANGUAGES = [
     BASH_LANGUAGE,
 ]
 
+
 # Functions
 def log_line(log_name, line):
     """log_line accepts a line a returns a properly formatted log line"""
@@ -64,6 +68,10 @@ def log_line(log_name, line):
         log_name,
         line,
     )
+
+def send_syslog(msg):
+    """send a log message to AlienVault"""
+    Config['netsyslogger'].log(syslog.LOG_USER, syslog.LOG_NOTICE, msg, pid=True)
 
 def spawn_module(module, current_lang, mod_name):
     """spawn_module executes an individual Tripyarn module"""
@@ -81,13 +89,22 @@ def spawn_module(module, current_lang, mod_name):
     file_handler = open(log_file, "a")
 
     for stdout_line in stdout:
-        file_handler.write(log_line(mod_name, stdout_line))
+        if Config['use_netsyslogger']:
+            send_syslog(log_line(mod_name, stdout_line))
+        else:
+            file_handler.write(log_line(mod_name, stdout_line))
 
     for stderr_line in stderr:
-        file_handler.write(log_line(mod_name, stderr_line))
+        if Config['use_netsyslogger']:
+            send_syslog(log_line(mod_name, stderr_line))
+        else:
+            file_handler.write(log_line(mod_name, stderr_line))
 
 def launch_modules():
     """launch_modules launches Tripyarn's executable modules"""
+    if Config['use_netsyslogger'] and not Config['alienvault_instance']:
+        print "[x] Error: netsyslogger enabled but no remote host defined.  Please enter the IP of your AlienVault instance in midas/modules/lib/config.py and try again."
+        return
     for module in MODULES:
         current_lang = None
         mod_name, ext = splitext(basename(module))
@@ -99,6 +116,7 @@ def launch_modules():
 
         if current_lang is not None and isinstance(current_lang, TyLanguage):
             spawn_module(module, current_lang, mod_name)
+
 
 if __name__ == "__main__":
     launch_modules()
