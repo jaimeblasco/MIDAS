@@ -102,6 +102,9 @@ def spawn_module(module, current_lang, mod_name):
 
 def launch_modules():
     """launch_modules launches Tripyarn's executable modules"""
+    if Config['use_netsyslogger'] and not Config['alienvault_instance']:
+        print "[x] Error: netsyslogger enabled but no remote host defined.  Please enter the IP of your AlienVault instance in midas/modules/lib/config.py and try again."
+        return
     for module in MODULES:
         current_lang = None
         mod_name, ext = splitext(basename(module))
