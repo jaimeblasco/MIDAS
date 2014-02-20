@@ -49,7 +49,7 @@ config['firewall_keys'] = [
 
 # AlienVault configuration
 import netsyslog
-config['alienvault_instance'] = "192.168.1.234"
+config['alienvault_instance'] = ""
 config['netsyslogger'] = netsyslog.Logger()
 config['netsyslogger'].add_host(config['alienvault_instance'])
 
