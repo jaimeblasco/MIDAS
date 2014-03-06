@@ -190,19 +190,16 @@ tables = {
         "name" : {
             "type" : "text",
             "nullable" : False,
-<<<<<<< HEAD
         },
         "date" : {
             "type" : "text",
             "nullable" : False,
         },
     },
-=======
             },
         "date" : {
             "type" : "text",
             "nullable" : False,
             },
         },
->>>>>>> pr/1
 }
